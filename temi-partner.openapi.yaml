@@ -1,0 +1,1015 @@
+openapi: 3.0.3
+info:
+  title: Temi RESTful API
+  version: 1.0.0
+  x-logo:
+    url: /logo.svg
+    altText: temi
+    backgroundColor: '#F9F9F9'
+  description: |
+    RESTful API for controlling Temi robots in an organization.
+
+    [![Run In Postman](https://run.pstmn.io/button.svg)](https://app.getpostman.com/run-collection/29112374-68abae79-e9d0-4cba-b081-63d04714c268?action=collection%2Ffork&source=rip_markdown&collection-url=entityId%3D29112374-68abae79-e9d0-4cba-b081-63d04714c268%26entityType%3Dcollection%26workspaceId%3D266fefc3-122e-4a2d-9285-1605d419570e#?env%5BProduction%5D=W3sia2V5IjoiYmFzZVVybCIsInZhbHVlIjoiIiwiZW5hYmxlZCI6dHJ1ZSwidHlwZSI6ImRlZmF1bHQifV0=)
+
+    Authenticate every request with an Organization Access Token (OAT) in the
+    `x-api-key` header. Tokens are scoped; each endpoint requires the permission
+    noted in its description.
+
+    OpenAPI control requires a **PRO** (or PRO free-trial) robot, matching launcher
+    SDK access. `GET /robots` omits BASIC robots. Robot-scoped endpoints return
+    `403` for BASIC robots. `GET /verify` is not robot-gated.
+
+    Robots are identified by hardware `serialNumber` in paths and request bodies.
+servers:
+  - url: https://integration.dev.temi.cloud/openapi/v1
+    description: Integration
+tags:
+  - name: Authentication
+    description: Token verification.
+  - name: Robots
+    description: Robot inventory, map locations, and callable contacts.
+  - name: Sequences
+    description: Execute multi-step robot sequences.
+security:
+  - ApiKeyAuth: []
+paths:
+  /verify:
+    get:
+      tags: [Authentication]
+      operationId: verifyToken
+      summary: Verify access token
+      description: Validates the OAT and returns organization, scope, and robot access metadata.
+      responses:
+        '200':
+          description: Token is valid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyResponse'
+        '401':
+          description: Missing or invalid token.
+
+  /robots:
+    get:
+      tags: [Robots]
+      operationId: listRobots
+      summary: List robots
+      description: |
+        Returns PRO robots accessible to this token (identity fields only).
+        BASIC robots are omitted.
+
+        Required scope: `read:org:info`
+      responses:
+        '200':
+          description: Robot list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RobotsResponse'
+        '401':
+          description: Missing or invalid token.
+        '403':
+          description: Missing required scope.
+
+  /robots/{serialNumber}:
+    get:
+      tags: [Robots]
+      operationId: getRobotStatus
+      summary: Get robot status
+      description: |
+        Returns identity, presence, and last-known activity for a single PRO robot.
+        `status` is `online`, `offline`, `busy`, or `privacy`.
+        Privacy is reported even though the robot publishes MQTT presence as offline.
+
+        Optional `movement`, `sequence`, `call`, and `battery` come from retained MQTT
+        (same topics Center uses). They are omitted when the broker has no payload.
+
+        **Polling after play**
+
+        1. Play a sequence whose last action is `MOVEMENT` to `home base`.
+        2. Poll this endpoint until `sequence.status` is not `start` (complete,
+           abort, or absent) **and** `movement.type` is `idle` (or `go_to` with
+           `status: complete` and `location` = home base).
+        3. Then send the next room.
+
+        `START_CALL` holds the sequence until the call ends. Meanwhile
+        `call.status` is `start` (ringing or connected). `call.hostId` is the
+        meeting host from retained telepresence extra.
+
+        Required scope: `read:robot:status`
+      parameters:
+        - $ref: '#/components/parameters/serialNumber'
+      responses:
+        '200':
+          description: Robot status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RobotStatus'
+              example:
+                teminame: Reception
+                serialNumber: '00123456789'
+                status: online
+                movement:
+                  type: go_to
+                  status: going
+                  location: home base
+                sequence:
+                  status: start
+                  name: Ward round
+                  step: 2
+                  total: 4
+                call:
+                  status: start
+                  hostId: e033cb9317de7969fa0712237ce199d6
+                battery:
+                  level: 87
+                  isCharging: false
+        '401':
+          description: Missing or invalid token.
+        '403':
+          description: Missing required scope, robot not allowed for this token, or robot is not PRO.
+
+  /robots/{serialNumber}/locations:
+    get:
+      tags: [Robots]
+      operationId: listRobotLocations
+      summary: List robot locations
+      description: |
+        Returns named map locations for a PRO robot. Use these names as
+        `extra.locationName` in `MOVEMENT` actions.
+
+        Required scope: `read:robot:locations`
+      parameters:
+        - $ref: '#/components/parameters/serialNumber'
+      responses:
+        '200':
+          description: Locations for the robot's current map.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationsResponse'
+        '401':
+          description: Missing or invalid token.
+        '403':
+          description: Missing required scope, robot not allowed for this token, or robot is not PRO.
+
+  /robots/{serialNumber}/contacts:
+    get:
+      tags: [Robots]
+      operationId: listRobotContacts
+      summary: List robot members (callable contacts)
+      description: |
+        Returns **project members** of this robot who can receive a `START_CALL`.
+        Only root, admin, collaborator, and guest roles with access to this robot
+        are included. Org/robot contacts who are not members do not appear — add
+        them as a member in Center first.
+
+        `name` uses the organization Contacts display name when available, otherwise
+        the member login username.
+
+        Each `temiId` is unique in the list. Use it in `START_CALL` `contactIds`.
+
+        Required scope: `read:robot:contact`
+      parameters:
+        - $ref: '#/components/parameters/serialNumber'
+      responses:
+        '200':
+          description: Robot contact list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactsResponse'
+        '401':
+          description: Missing or invalid token.
+        '403':
+          description: Missing required scope, robot not allowed for this token, or robot is not PRO.
+
+  /sequences/validate:
+    post:
+      tags: [Sequences]
+      operationId: validateSequence
+      summary: Validate a sequence
+      description: |
+        Validates a sequence request body without persisting or dispatching it.
+        Use this to check action layout, required fields, and resolvable contacts
+        before execution. This endpoint does **not** check whether the robot is
+        currently online, in Privacy mode, or busy.
+
+        Required scope: `action:robot:sequence`
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaySequenceRequest'
+      responses:
+        '200':
+          description: Sequence definition is valid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateSequenceResponse'
+        '400':
+          description: Invalid request body or sequence definition.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingActions:
+                  summary: Missing actions
+                  value:
+                    error: actions must be a non-empty array
+                    error_code: validation_error
+                invalidSpeakDisplay:
+                  summary: Invalid SPEAK display
+                  value:
+                    error: 'SPEAK display must be one of none|text|talk, got: banner'
+                    error_code: validation_error
+        '401':
+          description: Missing or invalid token.
+        '403':
+          description: Missing required scope, robot not allowed for this token, or robot is not PRO.
+
+  /sequences/play:
+    post:
+      tags: [Sequences]
+      operationId: playSequence
+      summary: Play a sequence
+      description: |
+        Runs a sequence on a robot. A sequence is an ordered list of actions
+        (navigate, speak, place a video call). The request is accepted asynchronously;
+        the robot executes the sequence after delivery.
+
+        **Recommended flow**
+
+        1. `GET /robots` — select a robot by `serialNumber`
+        2. `GET /robots/{serialNumber}` — confirm `status` is `online`
+        3. `GET /robots/{serialNumber}/locations` — resolve location names for navigation
+        4. `GET /robots/{serialNumber}/contacts` — resolve `temiId` for calls
+        5. `POST /sequences/play` — submit the sequence with `serialNumber`
+        6. Poll `GET /robots/{serialNumber}` until the sequence finished and the
+           robot is idle / at home base.
+
+        Play is accepted only when the robot is `online` and not in Privacy mode.
+        Privacy, offline, and busy return `409` with `robot_privacy`, `robot_offline`,
+        or `robot_busy`. Check status before play.
+
+        Path parameters and play/validate bodies use hardware `serialNumber` only.
+
+        **Supported action types**
+
+        | Type | Purpose | Required fields |
+        |------|---------|-----------------|
+        | `MOVEMENT` | Navigate to a map location | `location` or `extra.locationName` |
+        | `SPEAK` | Speak text | `tts` or `extra.tts`; optional `language`, `display` (`none`, `text`, `talk`) |
+        | `START_CALL` | Start a video call | `contactIds` (unique `temiId`s); optional per-contact or action-level `platform` (`both`, `mobile`, `web`, same as Center); occupies a single step |
+
+        Compact requests may use `step` instead of `startStep`/`endStep`.
+        See the **minimal** example.
+
+        **Constraints**
+
+        - Every action must include `type` and either `step` or `startStep`/`endStep`.
+        - For a single-step action, set `startStep` and `endStep` to the same value (or use `step`).
+        - Sequences must include step 1, with a final action on every consecutive step.
+        - `MOVEMENT` and `SPEAK` may share a step. `START_CALL` must not share a step with `MOVEMENT` or `SPEAK` (overlap is rejected).
+        - `START_CALL` must start and end on the same step. `finalInEndStep` can be omitted; the server always sets it to `true`.
+        - `START_CALL` requires `contactIds` (a non-empty array of unique `temiId`s after trim).
+          Duplicates are rejected. One id is a 1:1 call; two or more is a group call.
+        - Call destination is the same as Center: `mobile` (temi phone app), `web` (temi Center),
+          or `both` (phone and Center, default). Each contact may set its own `platform`;
+          otherwise the action-level `platform` applies to every invited person.
+        - `repeatSequence` must be an integer `>= -1` (`-1` = infinite repeat).
+        - `startFromStep` must be an integer `>= 1` and not beyond the last sequence step.
+        - Callers should take `MOVEMENT` location names from `GET /robots/{serialNumber}/locations`.
+        - For `SPEAK` `language`: omit or use `""` to use the robot's current TTS language.
+          See `SpeakExtra.language` for supported locales. If the requested locale is unavailable
+          on the robot, speech uses the current system TTS.
+        - Play is rejected with `409` when the robot is in Privacy mode, offline, or busy.
+
+        Required scope: `action:robot:sequence`
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlaySequenceRequest'
+            examples:
+              minimal:
+                summary: Minimal compact request
+                value:
+                  serialNumber: '00123456789'
+                  actions:
+                    - type: MOVEMENT
+                      step: 1
+                      location: Room 12
+                    - type: SPEAK
+                      step: 2
+                      tts: Hello, your robot is here.
+                    - type: START_CALL
+                      step: 3
+                      contactIds:
+                        - '<temiId>'
+                    - type: MOVEMENT
+                      step: 4
+                      location: home base
+              groupCall:
+                summary: Group call with per-contact platforms
+                value:
+                  serialNumber: '00123456789'
+                  actions:
+                    - type: MOVEMENT
+                      step: 1
+                      location: Room 12
+                    - type: START_CALL
+                      step: 2
+                      contactIds:
+                        - temiId: '<temiIdA>'
+                          platform: mobile
+                        - temiId: '<temiIdB>'
+                          platform: web
+              full:
+                summary: Explicit request with full action fields
+                value:
+                  serialNumber: '00123456789'
+                  name: ward-round
+                  startFromStep: 1
+                  actions:
+                    - type: MOVEMENT
+                      startStep: 1
+                      endStep: 1
+                      finalInEndStep: true
+                      extra:
+                        locationName: Room 12
+                        speed: high
+                        onError: skip
+                        personalLead: false
+                    - type: SPEAK
+                      startStep: 2
+                      endStep: 2
+                      finalInEndStep: true
+                      extra:
+                        tts: Hello, your robot is here.
+                        language: en-US
+                        display: text
+                    - type: START_CALL
+                      startStep: 3
+                      endStep: 3
+                      contactIds:
+                        - '<temiId>'
+                      platform: both
+                    - type: MOVEMENT
+                      startStep: 4
+                      endStep: 4
+                      finalInEndStep: true
+                      extra:
+                        locationName: home base
+                        speed: high
+                        onError: skip
+                        personalLead: false
+      responses:
+        '202':
+          description: Sequence accepted for execution.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaySequenceResponse'
+        '400':
+          description: Invalid request body or sequence definition.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingActions:
+                  summary: Missing actions
+                  value:
+                    error: actions must be a non-empty array
+                    error_code: validation_error
+                contactNotFound:
+                  summary: Unresolvable START_CALL contact
+                  value:
+                    error: 'contactIds entry not found: <temiId>'
+                    error_code: validation_error
+                duplicateContactIds:
+                  summary: Duplicate START_CALL contactIds
+                  value:
+                    error: START_CALL contactIds must be unique
+                    error_code: validation_error
+        '401':
+          description: Missing or invalid token.
+        '403':
+          description: Missing required scope, robot not allowed for this token, or robot is not PRO.
+        '409':
+          description: Robot is not runnable (Privacy, offline, or busy).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                privacy:
+                  summary: Robot is in Privacy mode
+                  value:
+                    error: Robot is in Privacy mode
+                    error_code: robot_privacy
+                offline:
+                  summary: Robot is offline
+                  value:
+                    error: Robot is offline
+                    error_code: robot_offline
+                busy:
+                  summary: Robot is busy
+                  value:
+                    error: Robot is busy
+                    error_code: robot_busy
+
+  /sequences/stop:
+    post:
+      tags: [Sequences]
+      operationId: stopSequence
+      summary: Stop a running sequence
+      description: |
+        Stops an OpenAPI sequence that is currently running on a robot. Only the
+        same Organization Access Token that called `POST /sequences/play` may stop
+        that run, using the `sequenceId` returned from play.
+
+        The server confirms the robot is still running that sequence (retained
+        `sequence.sequenceId` from `GET /robots/{serialNumber}`) before dispatching
+        MQTT `stop`. This avoids halting a different sequence that started later.
+
+        Required scope: `action:robot:sequence`
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StopSequenceRequest'
+            example:
+              sequenceId: 615b14b41a20f8423a7af06a
+      responses:
+        '202':
+          description: Stop accepted for delivery to the robot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StopSequenceResponse'
+        '400':
+          description: Missing or invalid `sequenceId`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid token.
+        '403':
+          description: Missing required scope.
+        '404':
+          description: Unknown `sequenceId`, expired run, or token did not trigger play.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Sequence not found
+                error_code: not_found
+        '409':
+          description: Robot is offline or not running this sequence.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Sequence is not running on the robot
+                error_code: sequence_not_running
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: Organization Access Token issued for this integration.
+
+  parameters:
+    serialNumber:
+      name: serialNumber
+      in: path
+      required: true
+      description: 11-digit hardware serial from `GET /robots`.
+      schema:
+        type: string
+        pattern: '^[0-9]{11}$'
+        minLength: 11
+        maxLength: 11
+        example: '00123456789'
+
+  schemas:
+    VerifyResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        organizationId:
+          type: string
+        tokenId:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+        robotScope:
+          type: string
+          enum: [all, selected]
+          description: |
+            `all` — every PRO robot in the organization.
+            `selected` — only the serials in `serialNumbers`.
+        serialNumbers:
+          type: array
+          items:
+            type: string
+            pattern: '^[0-9]{11}$'
+            minLength: 11
+            maxLength: 11
+            example: '00123456789'
+          description: |
+            Hardware serials this token may access when `robotScope` is `selected`.
+            Empty when `robotScope` is `all`.
+
+    RobotSummary:
+      type: object
+      required: [serialNumber]
+      properties:
+        teminame:
+          type: string
+          description: Display name of the robot.
+        serialNumber:
+          type: string
+          description: 11-digit hardware serial number.
+          pattern: '^[0-9]{11}$'
+          minLength: 11
+          maxLength: 11
+          example: '00123456789'
+
+    RobotsResponse:
+      type: object
+      properties:
+        robots:
+          type: array
+          items:
+            $ref: '#/components/schemas/RobotSummary'
+
+    RobotStatus:
+      allOf:
+        - $ref: '#/components/schemas/RobotSummary'
+        - type: object
+          required: [serialNumber, status]
+          properties:
+            status:
+              type: string
+              description: |
+                Robot presence. `privacy` is reported when project mode is Privacy
+                (MQTT presence for Privacy is `offline`).
+              enum: [online, offline, busy, privacy]
+              example: online
+            movement:
+              $ref: '#/components/schemas/RobotMovementStatus'
+            sequence:
+              $ref: '#/components/schemas/RobotSequenceStatus'
+            call:
+              $ref: '#/components/schemas/RobotCallStatus'
+            battery:
+              $ref: '#/components/schemas/RobotBatteryStatus'
+
+    RobotMovementStatus:
+      type: object
+      description: |
+        Last-known movement from retained MQTT `temi/{id}/events/movement`.
+        Omitted when the broker has no payload. `type` includes `idle`, `go_to`,
+        `go_to_coordinate`, `be_with_me`, `turn_by`, `skid_joy`, `positioning`.
+        `status` includes `start`, `going`, `calculating`, `complete`, `abort`,
+        `obstacle detected`.
+      properties:
+        type:
+          type: string
+          example: go_to
+        status:
+          type: string
+          example: going
+        location:
+          type: string
+          description: Named map location from movement extras, when present.
+          example: home base
+
+    RobotSequenceStatus:
+      type: object
+      required: [status]
+      description: |
+        Last-known sequence activity from `temi/{id}/activityStatus`.
+        Omitted when the robot is not reporting a sequence. `status` is `start`
+        while running; `complete` / `abort` (and similar) when finished.
+      properties:
+        status:
+          type: string
+          example: start
+        name:
+          type: string
+          example: Ward round
+        step:
+          type: integer
+          example: 2
+        total:
+          type: integer
+          example: 4
+        sequenceId:
+          type: string
+          description: Present when the robot publishes `extra.id` / `extra.sequenceId`.
+
+    RobotCallStatus:
+      type: object
+      required: [status]
+      description: |
+        Last-known telepresence activity from `activity.telepresence`.
+        `status: start` means a call is in progress (ringing or connected,
+        including a stuck `START_CALL`). `hostId` is `extra.hostId` when present.
+      properties:
+        status:
+          type: string
+          example: start
+        hostId:
+          type: string
+          example: e033cb9317de7969fa0712237ce199d6
+
+    RobotBatteryStatus:
+      type: object
+      description: |
+        Last-known battery from retained MQTT `temi/{id}/events/battery`.
+        Omitted when the broker has no usable payload (`battery_level` of `-1`
+        and unknown charging are ignored). `level` is 0–100.
+      properties:
+        level:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 87
+        isCharging:
+          type: boolean
+          example: false
+
+    Location:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Location name for use in `MOVEMENT.extra.locationName`.
+
+    LocationsResponse:
+      type: object
+      properties:
+        serialNumber:
+          type: string
+        mapId:
+          type: string
+        mapName:
+          type: string
+        locations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Location'
+
+    Contact:
+      type: object
+      properties:
+        temiId:
+          type: string
+          description: |
+            Unique contact identifier for this robot. Each `temiId` appears at most
+            once in the list. Pass it in `START_CALL` `contactIds`.
+        name:
+          type: string
+        kind:
+          type: string
+          enum: [member]
+          description: Always `member` — only project members of this robot are callable.
+        source:
+          type: string
+          enum: [organization]
+          description: Always `organization` for member rows.
+
+    ContactsResponse:
+      type: object
+      properties:
+        contacts:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Contact'
+
+    StartCallContact:
+      type: object
+      required: [temiId]
+      additionalProperties: false
+      description: |
+        Per-participant `START_CALL` target, matching Center. `platform` may be
+        omitted to use the action-level `platform` (default `both`).
+      properties:
+        temiId:
+          type: string
+          minLength: 1
+          description: Unique contact identifier from `GET /robots/{serialNumber}/contacts`.
+        platform:
+          type: string
+          enum: [both, mobile, web]
+          description: |
+            Call destination for this person:
+            `mobile` = temi phone app, `web` = temi Center, `both` = phone and Center.
+
+
+    SequenceStopBy:
+      type: object
+      description: Conditions that allow a user to interrupt the sequence.
+      properties:
+        touchScreen:
+          type: boolean
+        wakeup:
+          type: boolean
+
+    MovementExtra:
+      type: object
+      required: [locationName]
+      properties:
+        locationName:
+          type: string
+          description: Map location name from `GET /robots/{serialNumber}/locations`.
+        speed:
+          type: string
+          enum: [high, medium]
+          default: high
+        onError:
+          type: string
+          enum: [skip, abort]
+          default: skip
+        personalLead:
+          type: boolean
+          default: false
+
+    SpeakExtra:
+      type: object
+      required: [tts]
+      properties:
+        tts:
+          type: string
+          description: Text spoken by the robot.
+        language:
+          type: string
+          description: |
+            BCP-47 locale for TTS. Omit or use `""` to use the robot's current TTS language.
+            Supported values: `en-US`, `zh-CN`, `zh-HK`, `de-DE`, `ja-JP`, `ko-KR`, `zh-TW`,
+            `th-TH`, `he-IL`, `in-ID`, `fr-FR`, `fr-CA`, `ar-XA`, `pt-BR`, `ru-RU`, `es-ES`,
+            `es-CO`, `es-AR`, `ca-ES`, `it-IT`, `hi-IN`, `et-EE`, `tr-TR`, `en-IN`, `el-GR`,
+            `vi-VN`, `ms-MY`, `az-AZ`, `ur-PK`.
+            If the locale is unavailable on the robot, speech uses the current system TTS.
+          default: ''
+        display:
+          type: string
+          description: |
+            How spoken text is shown on the robot screen.
+            `none` = audio only, `text` = show caption text, `talk` = talk/avatar display mode.
+          enum: [none, text, talk]
+          default: text
+        loop:
+          type: boolean
+          default: false
+
+    SequenceAction:
+      type: object
+      required: [type]
+      additionalProperties: false
+      description: |
+        Provide either compact fields (`step`, `location`, `tts`, `contactIds`)
+        or explicit fields (`startStep`, `endStep`, `extra`) with canonical types
+        (`MOVEMENT`, `SPEAK`, `START_CALL`).
+      properties:
+        type:
+          type: string
+          description: 'Action to execute. Supported values: `MOVEMENT`, `SPEAK`, `START_CALL`.'
+          enum: [MOVEMENT, SPEAK, START_CALL]
+        step:
+          type: integer
+          minimum: 1
+          description: Compact single-step number. Equivalent to setting `startStep` and `endStep` to the same value.
+        startStep:
+          type: integer
+          minimum: 1
+          description: First step occupied by this action.
+        endStep:
+          type: integer
+          minimum: 1
+          description: Last step occupied by this action. Equal to `startStep` for single-step actions.
+        finalInEndStep:
+          type: boolean
+          default: true
+          description: |
+            Whether the action completes on `endStep`. Defaults to `true`.
+            Omit for `START_CALL`; the server always sets it to `true`.
+        delay:
+          type: number
+          default: 0
+          description: Delay in seconds before the action starts.
+        actionId:
+          type: string
+          description: Optional client-supplied identifier.
+        location:
+          type: string
+          description: Compact field for `MOVEMENT`. Equivalent to `extra.locationName`.
+        tts:
+          type: string
+          description: Compact field for `SPEAK`. Equivalent to `extra.tts`.
+        language:
+          type: string
+          description: |
+            Compact locale for `SPEAK`. Equivalent to `extra.language`.
+            Omit or use `""` for the robot's current TTS language. See `SpeakExtra.language`.
+          default: ''
+        display:
+          type: string
+          description: |
+            Compact display mode for `SPEAK`. Equivalent to `extra.display`.
+            `none` = audio only, `text` = show caption text, `talk` = talk/avatar display mode.
+          enum: [none, text, talk]
+          default: text
+        contactIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            oneOf:
+              - type: string
+                minLength: 1
+              - $ref: '#/components/schemas/StartCallContact'
+          description: |
+            Required for `START_CALL`. One or more unique `temiId` values from this
+            robot's contacts. Uniqueness is checked after trimming; duplicates and
+            blank entries are rejected. A single id is a 1:1 call; two or more start
+            a group meeting. Each entry may be a `temiId` string or an object with
+            `temiId` and optional `platform` (`mobile`, `web`, or `both`), matching
+            Center's per-participant platform.
+        platform:
+          type: string
+          description: |
+            Optional for `START_CALL`. Default call destination for invited people
+            that omit their own `platform`, matching Center:
+            `mobile` = temi phone app, `web` = temi Center (browser),
+            `both` = phone and Center (default). Per-contact `platform` on a
+            `contactIds` object overrides this value. `extra.participants` is always
+            written, including when only one person is invited.
+          enum: [both, mobile, web]
+          default: both
+        extra:
+          description: |
+            Type-specific parameters for the explicit form.
+            Use `MovementExtra` for `MOVEMENT` and `SpeakExtra` for `SPEAK`.
+            For `START_CALL`, provide top-level `contactIds`.
+          oneOf:
+            - $ref: '#/components/schemas/MovementExtra'
+            - $ref: '#/components/schemas/SpeakExtra'
+
+    PlaySequenceRequest:
+      type: object
+      required: [serialNumber, actions]
+      additionalProperties: false
+      description: |
+        Sequence playback request. `serialNumber` identifies the robot.
+        Optional shell fields: `name`, `description`, `volume`,
+        `fixedVolume`, `startFromStep`, `repeatSequence`, and `stopBy`.
+        Unknown top-level fields are rejected.
+      properties:
+        serialNumber:
+          type: string
+          pattern: '^[0-9]{11}$'
+          minLength: 11
+          maxLength: 11
+          example: '00123456789'
+          description: 11-digit hardware serial from `GET /robots`.
+        actions:
+          type: array
+          minItems: 1
+          description: Ordered actions for the robot to execute.
+          items:
+            $ref: '#/components/schemas/SequenceAction'
+        name:
+          type: string
+          description: Optional sequence name.
+        description:
+          type: string
+        volume:
+          type: number
+          minimum: 1
+          maximum: 10
+          default: 5
+          description: |
+            Playback volume from 1 (quietest) to 10 (loudest). Defaults to `5`.
+            Out-of-range values are coerced to the nearest bound; fractional values
+            are rounded to the nearest integer.
+        fixedVolume:
+          type: boolean
+          description: If true, volume is fixed for the sequence duration.
+        startFromStep:
+          type: integer
+          minimum: 1
+          description: |
+            Step at which playback begins. Defaults to `1`.
+            Must be `>= 1` and not beyond the last sequence step.
+        repeatSequence:
+          type: integer
+          minimum: -1
+          description: |
+            Extra times to run the sequence after the first pass.
+            Use `-1` for infinite repeat. Defaults to `0`.
+        stopBy:
+          $ref: '#/components/schemas/SequenceStopBy'
+
+    PlaySequenceResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: accepted
+        sequenceId:
+          type: string
+          description: Identifier of the accepted sequence.
+        serialNumber:
+          type: string
+          description: Hardware serial of the robot that accepted the sequence.
+
+    StopSequenceRequest:
+      type: object
+      required: [sequenceId]
+      additionalProperties: false
+      properties:
+        sequenceId:
+          type: string
+          minLength: 1
+          description: Run identifier returned by `POST /sequences/play`.
+
+    StopSequenceResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: accepted
+        sequenceId:
+          type: string
+          description: Same run identifier returned by `POST /sequences/play`.
+        serialNumber:
+          type: string
+          description: Hardware serial of the robot that received the stop command.
+
+    ValidateSequenceResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: valid
+
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+        - error_code
+      description: |
+        Error body for unsuccessful sequence requests.
+        Returned for client validation failures (`400`), robot unavailable
+        (`409`), and unexpected server failures (`500`).
+      properties:
+        error:
+          type: string
+          minLength: 1
+          description: Human-readable explanation of the failure.
+          example: actions must be a non-empty array
+        error_code:
+          type: string
+          description: |
+            Stable category for programmatic handling:
+            - `validation_error` — invalid request body or sequence definition
+            - `robot_privacy` — robot is in Privacy mode
+            - `robot_offline` — robot is offline
+            - `robot_busy` — robot is busy (for example a call)
+            - `not_found` — unknown sequence or not authorized to stop it
+            - `sequence_not_running` — robot is not running this sequence
+            - `internal_error` — unexpected failure while processing the request
+          enum:
+            - validation_error
+            - robot_privacy
+            - robot_offline
+            - robot_busy
+            - not_found
+            - sequence_not_running
+            - internal_error
+          example: validation_error
+      example:
+        error: actions must be a non-empty array
+        error_code: validation_error

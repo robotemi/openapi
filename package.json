@@ -1,0 +1,14 @@
+{
+  "name": "temi-openapi-docs",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Temi Partner API docs (Redoc on Vercel)",
+  "scripts": {
+    "build": "mkdir -p public && cp logo.svg public/logo.svg && cp favicon.ico public/favicon.ico && redocly build-docs temi-partner.openapi.yaml -t template.hbs -o public/index.html",
+    "dev": "redocly preview-docs temi-partner.openapi.yaml",
+    "preview": "npx serve public"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^1.34.0"
+  }
+}
