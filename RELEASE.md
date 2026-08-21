@@ -36,13 +36,17 @@ npm run build && npm run preview   # preview the same static output as productio
 
 ## Production release
 
+Git (normal path): merge or push to `master`. Vercel builds `public/` per `vercel.json` and aliases https://openapi-docs.robotemi.com.
+
+Pull requests only create **preview** deployments; they do not update the custom domain.
+
+CLI fallback:
+
 ```bash
 npm install
 npm run build
 vercel deploy --prod --yes
 ```
-
-Vercel runs `npm run build` per `vercel.json` and publishes `public/` (including the Redoc `index.html`).
 
 After deploy, open https://openapi-docs.robotemi.com and verify:
 

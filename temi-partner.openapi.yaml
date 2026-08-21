@@ -21,6 +21,8 @@ info:
 
     Robots are identified by hardware `serialNumber` in paths and request bodies.
 servers:
+  - url: https://api.robotemi.com/openapi/v1
+    description: Production
   - url: https://integration.dev.temi.cloud/openapi/v1
     description: Integration
 tags:
