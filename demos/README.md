@@ -21,6 +21,12 @@ Do not:
 
 Each demo should document how the caller supplies their own token.
 
+## Catalog
+
+| Demo | Mode | Deploy |
+|------|------|--------|
+| [mvp-frontend-only](mvp-frontend-only/) | Client-only (browser → temi API) | GitHub Pages. Official: enable Pages **Source: GitHub Actions**, then `https://robotemi.github.io/openapi/` |
+
 ## Contributing
 
 1. Add a self-contained directory under `demos/`.

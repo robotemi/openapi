@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>temi OpenAPI — frontend-only demo</title>
+    <style>
+        body { background: #fff; color: #111; }
+        pre { white-space: pre-wrap; }
+        /* Mask the OAT without type="password" so Chrome does not offer to save it.
+           Non-standard: Chromium/Safari only. Firefox shows the value in the clear. */
+        #token { -webkit-text-security: disc; }
+        .json-view { font-family: monospace; }
+        .json-view details { margin-left: 1.2em; }
+        .json-view details > summary { margin-left: -1.2em; cursor: pointer; }
+        .json-key { color: #a31515; }
+        .json-string { color: #0451a5; }
+        .json-number, .json-bool { color: #098658; }
+        .json-null { color: #0000ff; }
+    </style>
+</head>
+<body>
+    <h1>temi OpenAPI — frontend-only demo</h1>
+    <p>
+        The Organization Access Token stays in this browser and is sent only to
+        temi OpenAPI. It is not posted to any other host.
+        <a href="https://openapi-docs.robotemi.com">API reference</a>
+    </p>
+
+    <p>
+        <label for="env">Environment</label><br>
+        <select id="env">
+            <option value="production">production (api.robotemi.com)</option>
+            <option value="integration">integration (integration.dev.temi.cloud)</option>
+        </select>
+    </p>
+    <p>
+        <label for="token">Organization Access Token</label><br>
+        <!-- type="text" + CSS mask: type="password" triggers Chrome's save-password prompt. -->
+        <input id="token" type="text" name="oat" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off" data-1p-ignore data-lpignore="true" data-form-type="other" size="64">
+    </p>
+    <p>
+        <button id="verify" type="button">Verify</button>
+        <button id="clear" type="button">Clear token</button>
+    </p>
+
+    <p id="verify-error" hidden></p>
+
+    <section id="verify-out" hidden>
+        <h2>Verify</h2>
+        <div id="verify-meta"></div>
+    </section>
+
+    <section id="robots-section" hidden>
+        <h2>Robots</h2>
+        <p id="robots-note"></p>
+        <div id="robots-list"></div>
+    </section>
+
+    <section id="resources-section" hidden>
+        <h2>Robot resources</h2>
+        <div id="resources-out"></div>
+    </section>
+
+    <script type="module" src="./js/app.js"></script>
+</body>
+</html>
