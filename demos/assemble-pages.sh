@@ -71,8 +71,8 @@ EOF
                 echo "assemble-pages: $name has package.json but no package-lock.json (or npm-shrinkwrap.json); npm ci requires a lockfile" >&2
                 exit 1
             fi
-            echo "assemble-pages: building $name"
-            (cd "$dir" && rm -rf dist && npm ci --no-audit --no-fund && npm run build)
+            echo "assemble-pages: building $name" >&2
+            (cd "$dir" && rm -rf dist && npm ci --no-audit --no-fund && npm run build) >&2
             if [ ! -f "${dir}dist/index.html" ]; then
                 echo "assemble-pages: $name build produced no dist/index.html" >&2
                 exit 1
