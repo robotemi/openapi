@@ -2,7 +2,7 @@
 
 Client-only demo of the [temi OpenAPI](https://openapi-docs.robotemi.com). No build step, no backend.
 
-The Organization Access Token is typed in the browser and sent only as `x-api-key` to `api.robotemi.com` or `integration.dev.temi.cloud`. It is kept in memory for this page load only — not written to `sessionStorage` or `localStorage`.
+The Organization Access Token is typed in the browser and sent only as `x-api-key` to the selected OpenAPI host: `api.robotemi.com` (Production), `api.robotemi.cn` (Production-CN), or `integration.dev.temi.cloud` (Integration). Use the production host that matches the organization's region. The token is kept in memory for this page load only — not written to `sessionStorage` or `localStorage`.
 
 ## What it does
 

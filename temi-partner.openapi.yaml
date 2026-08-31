@@ -13,7 +13,9 @@ info:
 
     Authenticate every request with an Organization Access Token (OAT) in the
     `x-api-key` header. Tokens are scoped; each endpoint requires the permission
-    noted in its description.
+    noted in its description. Call the production host that matches the
+    organization: Production (`api.robotemi.com`) or Production-CN
+    (`api.robotemi.cn`).
 
     OpenAPI control requires a **PRO** (or PRO free-trial) robot, matching launcher
     SDK access. `GET /robots` omits BASIC robots. Robot-scoped endpoints return
@@ -23,6 +25,8 @@ info:
 servers:
   - url: https://api.robotemi.com/openapi/v1
     description: Production
+  - url: https://api.robotemi.cn/openapi/v1
+    description: Production-CN
   - url: https://integration.dev.temi.cloud/openapi/v1
     description: Integration
 tags:

@@ -1,6 +1,7 @@
 /** API hosts from temi-partner.openapi.yaml `servers`. */
 export const ENVIRONMENTS = {
     production: 'https://api.robotemi.com/openapi/v1',
+    'production-cn': 'https://api.robotemi.cn/openapi/v1',
     integration: 'https://integration.dev.temi.cloud/openapi/v1',
 }
 

@@ -13,6 +13,10 @@ Usage
 
 Authenticate every request with an Organization Access Token (OAT) in the `x-api-key` header.
 
+Use `https://api.robotemi.com/openapi/v1` (Production) or
+`https://api.robotemi.cn/openapi/v1` (Production-CN) for the same region as
+the organization.
+
 OpenAPI control requires a **PRO** (or PRO free-trial) robot.
 
 ```
