@@ -25,6 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
       - name: Assemble site
         run: bash demos/assemble-pages.sh _site
       - uses: actions/configure-pages@v5

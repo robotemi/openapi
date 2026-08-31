@@ -23,7 +23,7 @@ Each demo should document how the caller supplies their own token.
 
 ## Catalog
 
-Official static host: [https://robotemi.github.io/openapi/](https://robotemi.github.io/openapi/) (index of every client-only demo). A folder is published when it has `index.html` and no `vercel.json`.
+Official static host: [https://robotemi.github.io/openapi/](https://robotemi.github.io/openapi/) (index of every client-only demo). A folder is published when it has `index.html` and no `vercel.json`. If the folder has `package.json`, Pages runs `npm ci && npm run build` and publishes `dist/`.
 
 | Demo | Mode | Deploy |
 |------|------|--------|
@@ -34,7 +34,8 @@ Official static host: [https://robotemi.github.io/openapi/](https://robotemi.git
 1. Add a self-contained directory under `demos/`.
 2. Include a short `README.md` with purpose, setup, and how the OAT is provided.
 3. Keep dependencies and scope small enough that someone else can run the demo without a private environment.
-4. Client-only static demos: add `index.html` at the folder root, omit `vercel.json`, and use a URL-safe folder name (`A–Z a–z 0–9 . _ -`). Merge to `master` and the Pages workflow copies the folder to `https://robotemi.github.io/openapi/<name>/`.
-5. Serverless demos: do not add `index.html` as a Pages app (or include `vercel.json`). Deploy as a separate Vercel project.
+4. Client-only static demos (no build): add `index.html` at the folder root, omit `vercel.json`, and use a URL-safe folder name (`A–Z a–z 0–9 . _ -`). Merge to `master` and the Pages workflow copies the folder to `https://robotemi.github.io/openapi/<name>/`.
+5. Client-only demos that use Vite/TypeScript: keep `package.json` with `npm run build` writing `dist/index.html`, set Vite `base` to `./`, omit `vercel.json`. Do not commit `node_modules/` or `dist/`. Pages builds and publishes `dist/`.
+6. Serverless demos: include `vercel.json`. Deploy as a separate Vercel project.
 
 Questions about the API itself belong in the [API reference](https://openapi-docs.robotemi.com).

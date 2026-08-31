@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build the GitHub Pages tree: index + each static demo as a subfolder.
 # A demo is published when it has index.html and no vercel.json.
+# If package.json is present, run `npm ci && npm run build` and publish dist/.
 set -euo pipefail
 
 demos="$(cd "$(dirname "$0")" && pwd)"
@@ -68,7 +69,19 @@ EOF
                 continue
                 ;;
         esac
-        cp -R -- "$dir" "$out/$name"
+        if [ -f "${dir}package.json" ]; then
+            echo "assemble-pages: building $name"
+            (cd "$dir" && npm ci && npm run build)
+            if [ ! -f "${dir}dist/index.html" ]; then
+                echo "assemble-pages: $name build produced no dist/index.html" >&2
+                exit 1
+            fi
+            mkdir -p -- "$out/$name"
+            cp -R -- "${dir}dist/." "$out/$name/"
+            touch -- "$out/$name/.nojekyll"
+        else
+            cp -R -- "$dir" "$out/$name"
+        fi
         printf '        <li><a href="./%s/">%s</a></li>\n' "$name" "$name"
     done
     cat <<'EOF'
