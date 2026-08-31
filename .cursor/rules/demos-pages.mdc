@@ -10,7 +10,7 @@ Source of truth: `demos/README.md` and `demos/assemble-pages.sh`. Keep the READM
 
 ## Token
 
-- Client-only: OAT in memory only; send only as `x-api-key` to hosts in `config` / OpenAPI `servers`.
+- Client-only: OAT in memory only; send only as `x-api-key` to hosts in `config` / OpenAPI `servers` (`api.robotemi.com`, `api.robotemi.cn`, `integration.dev.temi.cloud`). Use the production host that matches the organization's region.
 - No `sessionStorage` / `localStorage` / cookies / analytics / CDN scripts that can read the token.
 - `fetch` that carries the OAT: `redirect: 'error'`.
 - Do not official-host a backend that accepts someone else's OAT.

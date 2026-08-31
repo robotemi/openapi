@@ -110,10 +110,7 @@ let discovery: RobotDiscoveryController | null = null;
 let composer: SequenceComposer | null = null;
 let runState: RunStateSnapshot = createRunState();
 let lifecycle: PlayPollStopLifecycle | null = null;
-let environmentTransport: Record<Environment, EnvironmentTransportState> = {
-  production: "unknown",
-  integration: "unknown",
-};
+let environmentTransport: Record<Environment, EnvironmentTransportState> = emptyEnvironmentTransport();
 
 let pendingRobotSerialNumber: string | null = null;
 const robotStatusPanels = new Map<string, RobotStatusPanelState>();
@@ -1747,7 +1744,7 @@ function resetPage(message: string): void {
   composer = null;
   clearConnection();
   runState = createRunState();
-  environmentTransport = { production: "unknown", integration: "unknown" };
+  environmentTransport = emptyEnvironmentTransport();
   pendingRobotSerialNumber = null;
   robotResourcesLoading = false;
   editingValidatedSequence = false;
@@ -1954,7 +1951,16 @@ function statusLabelFor(status: RobotStatus["status"] | undefined, targetLanguag
 }
 
 function environmentLabel(value: Environment): string {
-  return value === "production" ? "Production" : "Integration";
+  if (value === "production") return copy("生产", "Production");
+  if (value === "production-cn") return copy("生产（中国）", "Production-CN");
+  return copy("集成", "Integration");
+}
+
+function emptyEnvironmentTransport(): Record<Environment, EnvironmentTransportState> {
+  return Object.fromEntries(ENVIRONMENTS.map((value) => [value, "unknown"])) as Record<
+    Environment,
+    EnvironmentTransportState
+  >;
 }
 
 function displayName(value: string | undefined, fallback: string): string {

@@ -1,8 +1,9 @@
-export const ENVIRONMENTS = ["production", "integration"] as const;
+export const ENVIRONMENTS = ["production", "production-cn", "integration"] as const;
 export type Environment = (typeof ENVIRONMENTS)[number];
 
 export const ENVIRONMENT_BASE_URLS: Readonly<Record<Environment, string>> = Object.freeze({
   production: "https://api.robotemi.com/openapi/v1",
+  "production-cn": "https://api.robotemi.cn/openapi/v1",
   integration: "https://integration.dev.temi.cloud/openapi/v1",
 });
 
@@ -211,7 +212,7 @@ export class TemiApiError extends Error {
 }
 
 export function isEnvironment(value: unknown): value is Environment {
-  return value === "production" || value === "integration";
+  return typeof value === "string" && (ENVIRONMENTS as readonly string[]).includes(value);
 }
 
 export class TemiApiClient {

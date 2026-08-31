@@ -10,7 +10,7 @@ An OAT is a secret. Demos in this repository must not collect, store, or transmi
 
 Acceptable patterns include:
 
-- **Client-only apps.** The token is entered by the user in the browser and is sent only to temi APIs. It must not leave the browser for any other destination (no analytics, logging, or third-party backends).
+- **Client-only apps.** The token is entered by the user in the browser and is sent only to temi APIs. It must not leave the browser for any other destination (no analytics, logging, or third-party backends). Use Production (`api.robotemi.com`) or Production-CN (`api.robotemi.cn`) for the same region as the organization.
 - **User-deployed serverless.** A small service the user can deploy themselves, with the token supplied at runtime as a parameter or environment variable. Do not bake tokens into source, config, or hosted defaults.
 
 Do not:
