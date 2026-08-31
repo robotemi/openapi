@@ -1,0 +1,42 @@
+---
+description: OpenAPI demo publishing — token safety, Pages assemble, CI trust
+globs: demos/**,.github/workflows/pages*.yml
+alwaysApply: false
+---
+
+# Demos and GitHub Pages
+
+Source of truth: `demos/README.md` and `demos/assemble-pages.sh`. Keep the README inclusion rules identical to the script `if`s.
+
+## Token
+
+- Client-only: OAT in memory only; send only as `x-api-key` to hosts in `config` / OpenAPI `servers`.
+- No `sessionStorage` / `localStorage` / cookies / analytics / CDN scripts that can read the token.
+- `fetch` that carries the OAT: `redirect: 'error'`.
+- Do not official-host a backend that accepts someone else's OAT.
+
+## Assemble script (`demos/assemble-pages.sh`)
+
+- Guard `rm -rf -- "$out"`: canonicalize `out` (`abspath` + `normpath`), then refuse empty, `.`, `..`, `/`, leading `-`, repo root, `demos/`, or an `out` that is an ancestor of the repo.
+- Demo folder names: `A–Z a–z 0–9 . _ -` only; skip the rest (they go into HTML).
+- Publish when there is no `vercel.json` and either:
+  - no `package.json` + root `index.html` → copy the **whole folder**;
+  - `package.json` + `package-lock.json` (or `npm-shrinkwrap.json`) → `rm -rf dist && npm ci --no-audit --no-fund && npm run build`, publish `dist/` (must contain `dist/index.html`). Fail fast if the lockfile is missing.
+- Vite: `base: './'`. Do not commit `node_modules/` or `dist/`.
+
+## Workflow
+
+- PR: assemble only, never `deploy-pages`.
+- Deploy only from `master` (push or `workflow_dispatch` on that ref).
+- Do not run `npm` / assemble on **fork** PRs (`head.repo.full_name != github.repository`). Same-repo PRs may assemble.
+- Generic `upload-artifact` of `_site` must set `include-hidden-files: true` so `.nojekyll` reaches Pages.
+- One PR should not both invent a new CI trust path and change publish layout. Split those.
+
+## Before opening a PR
+
+```bash
+bash demos/assemble-pages.sh _site
+npx --yes shellcheck demos/assemble-pages.sh
+```
+
+Then re-read `demos/README.md` against the script. Serve `_site` locally if the change is user-visible.
