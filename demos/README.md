@@ -31,6 +31,7 @@ Official static host: [https://robotemi.github.io/openapi/](https://robotemi.git
 | Demo | Mode | Deploy |
 |------|------|--------|
 | [mvp-frontend-only](mvp-frontend-only/) | Client-only (browser → temi API) | [https://robotemi.github.io/openapi/mvp-frontend-only/](https://robotemi.github.io/openapi/mvp-frontend-only/) |
+| [temi-openapi-scenario-runner](temi-openapi-scenario-runner/) | Client-only (Vite/TypeScript, browser → temi API) | [https://robotemi.github.io/openapi/temi-openapi-scenario-runner/](https://robotemi.github.io/openapi/temi-openapi-scenario-runner/) |
 
 ## Contributing
 

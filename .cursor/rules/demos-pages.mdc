@@ -22,6 +22,7 @@ Source of truth: `demos/README.md` and `demos/assemble-pages.sh`. Keep the READM
 - Publish when there is no `vercel.json` and either:
   - no `package.json` + root `index.html` → copy the **whole folder**;
   - `package.json` + `package-lock.json` (or `npm-shrinkwrap.json`) → `rm -rf dist && npm ci --no-audit --no-fund && npm run build`, publish `dist/` (must contain `dist/index.html`). Fail fast if the lockfile is missing.
+- Progress / `npm` output: stderr only. The `{ ... } > index.html` block must not capture build logs.
 - Vite: `base: './'`. Do not commit `node_modules/` or `dist/`.
 
 ## Workflow
