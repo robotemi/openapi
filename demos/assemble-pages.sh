@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Build the GitHub Pages tree: index + each static demo as a subfolder.
-# A demo is published when it has index.html and no vercel.json.
-# If package.json is present, run `npm ci && npm run build` and publish dist/.
+# A demo is published when it has no vercel.json and either:
+#   - package.json + lockfile → rm -rf dist && npm ci --no-audit --no-fund && npm run build, publish dist/
+#   - root index.html (no package.json) → copy the whole folder
 set -euo pipefail
 
 demos="$(cd "$(dirname "$0")" && pwd)"
@@ -18,10 +19,7 @@ case "$out" in
         exit 1
         ;;
 esac
-if [ "${out#/}" = "$out" ]; then
-    out="$(pwd)/$out"
-fi
-out="${out%/}"
+out="$(python3 -c 'import os, sys; print(os.path.normpath(os.path.abspath(os.path.expanduser(sys.argv[1]))))' "$out")"
 if [ "$out" = "$repo" ] || [ "$out" = "$demos" ]; then
     echo "assemble-pages: refusing to delete the repo or demos directory" >&2
     exit 1
@@ -60,7 +58,6 @@ touch -- "$out/.nojekyll"
 EOF
     for dir in "$demos"/*/; do
         [ -d "$dir" ] || continue
-        [ -f "${dir}index.html" ] || continue
         [ -f "${dir}vercel.json" ] && continue
         name="$(basename "$dir")"
         case "$name" in
@@ -70,8 +67,12 @@ EOF
                 ;;
         esac
         if [ -f "${dir}package.json" ]; then
+            if [ ! -f "${dir}package-lock.json" ] && [ ! -f "${dir}npm-shrinkwrap.json" ]; then
+                echo "assemble-pages: $name has package.json but no package-lock.json (or npm-shrinkwrap.json); npm ci requires a lockfile" >&2
+                exit 1
+            fi
             echo "assemble-pages: building $name"
-            (cd "$dir" && npm ci && npm run build)
+            (cd "$dir" && rm -rf dist && npm ci --no-audit --no-fund && npm run build)
             if [ ! -f "${dir}dist/index.html" ]; then
                 echo "assemble-pages: $name build produced no dist/index.html" >&2
                 exit 1
@@ -79,8 +80,11 @@ EOF
             mkdir -p -- "$out/$name"
             cp -R -- "${dir}dist/." "$out/$name/"
             touch -- "$out/$name/.nojekyll"
-        else
+        elif [ -f "${dir}index.html" ]; then
             cp -R -- "$dir" "$out/$name"
+        else
+            echo "assemble-pages: skipping $name (need index.html, or package.json + lockfile)" >&2
+            continue
         fi
         printf '        <li><a href="./%s/">%s</a></li>\n' "$name" "$name"
     done
