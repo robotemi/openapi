@@ -1,11 +1,11 @@
-name: Deploy frontend-only demo
+name: Deploy demos to GitHub Pages
 
 on:
   push:
     branches: [master]
     paths:
-      - 'demos/mvp-frontend-only/**'
-      - '.github/workflows/pages-mvp-frontend.yml'
+      - 'demos/**'
+      - '.github/workflows/pages-demos.yml'
   workflow_dispatch:
 
 permissions:
@@ -25,9 +25,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Assemble site
+        run: bash demos/assemble-pages.sh _site
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: demos/mvp-frontend-only
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4

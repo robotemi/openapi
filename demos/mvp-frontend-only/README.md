@@ -38,9 +38,12 @@ This folder is a complete Pages app. Copy it to the root of any repo, or publish
 
 ### Official publish from this monorepo
 
-The workflow [`.github/workflows/pages-mvp-frontend.yml`](../../.github/workflows/pages-mvp-frontend.yml) uploads this directory as the Pages artifact.
+The workflow [`.github/workflows/pages-demos.yml`](../../.github/workflows/pages-demos.yml) publishes every static demo as a subfolder.
 
-One-time repo setup: Settings → Pages → **Source: GitHub Actions**. After the first run on `master`, the site is `https://robotemi.github.io/openapi/`.
+After the first run on `master`:
+
+- Index: https://robotemi.github.io/openapi/
+- This demo: https://robotemi.github.io/openapi/mvp-frontend-only/
 
 ## Token safety
 
