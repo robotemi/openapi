@@ -663,6 +663,7 @@ button {
 .robot-select-control {
   display: grid;
   width: 100%;
+  min-width: 0;
   border: 0;
   padding: 0;
   gap: 16px;
@@ -683,6 +684,7 @@ button {
 
 .robot-card-top {
   width: 100%;
+  min-width: 0;
 }
 
 .robot-card-top > span:first-child {
@@ -779,6 +781,7 @@ button {
 
 .robot-card-footer {
   display: flex;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
