@@ -350,7 +350,7 @@ paths:
                       extra:
                         locationName: Room 12
                         speed: high
-                        onError: skip
+                        onError: abortSequence
                         personalLead: false
                     - type: SPEAK
                       startStep: 2
@@ -373,7 +373,7 @@ paths:
                       extra:
                         locationName: home base
                         speed: high
-                        onError: skip
+                        onError: abortSequence
                         personalLead: false
       responses:
         '202':
@@ -751,12 +751,20 @@ components:
           description: Map location name from `GET /robots/{serialNumber}/locations`.
         speed:
           type: string
-          enum: [high, medium]
+          description: |
+            Go-to speed. Same values as Temi Center sequence editor.
+            Robots without very low/high support may ignore unsupported speeds.
+          enum: [veryLow, low, medium, high, veryHigh]
           default: high
         onError:
           type: string
-          enum: [skip, abort]
-          default: skip
+          description: |
+            Behavior when the robot cannot reach the location.
+            `abortSequence` — end the sequence;
+            `completeAction` — finish this action and resume;
+            `completeStep` — finish this step and start the next.
+          enum: [abortSequence, completeAction, completeStep]
+          default: abortSequence
         personalLead:
           type: boolean
           default: false
